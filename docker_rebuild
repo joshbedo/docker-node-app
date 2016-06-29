@@ -1,0 +1,38 @@
+#!/bin/bash
+
+IMAGE_NAME=$1
+
+if [[ $IMAGE_NAME == "*" ]]; then
+  # cleanup dangling docker processes
+  docker rm -f $(docker ps -a -q)
+elif [[ $IMAGE_NAME != "" ]]; then
+  CONTAINER_ID=$(docker ps -a | grep $IMAGE_NAME | cut -c1-12)
+  docker rm -f $CONTAINER_ID
+else
+  echo "Invalid Container Name (Gaia, Redis) or wildcard (*)"
+  exit 1
+fi
+
+
+function rebuild_gaia () {
+  docker run --name gaia -p 8080:8080 \
+  -e REDIS_HOST=$(echo $DOCKER_HOST | cut -c7-20 -) -e REDIS_PORT=6379 \
+  -d joshbedo/gaia
+}
+
+function rebuild_redis () {
+  docker run -p 6379:6379 --name redis -d redis
+}
+
+
+if [[ $IMAGE_NAME == "gaia" ]]; then
+  rebuild_gaia
+elif [[ $IMAGE_NAME == "redis" ]]; then
+  rebuild_redis
+elif [[ $IMAGE_NAME == "*" ]]; then
+  rebuild_redis
+  rebuild_gaia
+else
+  echo "Invalid container name"
+  exit 1
+fi
